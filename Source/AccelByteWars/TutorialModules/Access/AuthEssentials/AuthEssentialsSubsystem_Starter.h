@@ -40,4 +40,7 @@ public:
 protected:
 	FOnlineIdentityAccelBytePtr IdentityInterface;
 	FOnlineAccountCredentials Credentials;
+
+private:
+	void OnLoginComplete(int32 LocalUserNum, bool bLoginWasSuccessful, const FUniqueNetId& UserId, const FString& LoginError, const FAuthOnLoginCompleteDelegate_Starter OnLoginComplete);
 };

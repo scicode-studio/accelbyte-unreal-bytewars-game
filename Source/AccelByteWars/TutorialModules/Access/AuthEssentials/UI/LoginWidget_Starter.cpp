@@ -78,8 +78,17 @@ void ULoginWidget_Starter::OnLoginWithDeviceIdButtonClicked()
 {
 	SetLoginState(ELoginState::LoggingIn);
 	OnRetryLoginDelegate.AddUObject(this, &ThisClass::OnLoginWithDeviceIdButtonClicked);
-	
-	UE_LOG_AUTH_ESSENTIALS(Warning, TEXT("Please integrate AcceByte Online Subsystem to access AccelByte Game Services."));
+
+	// Get player controller.
+	APlayerController* PC = GetWorld()->GetFirstPlayerController();
+	ensure(PC);
+
+	// Set auth credentials and send login with Device ID request.
+	// Note that login with Device ID only requires the login type.
+	// It doesn't require ID/username nor token/password.
+	ensure(AuthSubsystem);
+	AuthSubsystem->SetAuthCredentials(EAccelByteLoginType::DeviceId, TEXT(""), TEXT(""));
+	AuthSubsystem->Login(PC, FAuthOnLoginCompleteDelegate_Starter::CreateUObject(this, &ThisClass::OnLoginComplete));
 }
 
 void ULoginWidget_Starter::OnRetryLoginButtonClicked()
@@ -110,8 +119,19 @@ void ULoginWidget_Starter::OnQuitGameButtonClicked()
 
 void ULoginWidget_Starter::OnLoginComplete(bool bWasSuccessful, const FString& ErrorMessage)
 {
-	// TODO: Handle on login complete event.
-	UE_LOG_AUTH_ESSENTIALS(Warning, TEXT("On login complete event is not yet implemented."));
+	if (bWasSuccessful) 
+	{
+		// When login succeeds, open Main Menu widget.
+		UAccelByteWarsBaseUI* BaseUIWidget = Cast<UAccelByteWarsBaseUI>(GameInstance->GetBaseUIWidget());
+		ensure(BaseUIWidget);
+		BaseUIWidget->PushWidgetToStack(EBaseUIStackType::Menu, MainMenuWidgetClass);
+	}
+	else 
+	{
+		// When login fails, show an error message.
+		Tb_FailedMessage->SetText(FText::FromString(ErrorMessage));
+		SetLoginState(ELoginState::Failed);
+	}
 }
 
 #undef LOCTEXT_NAMESPACE

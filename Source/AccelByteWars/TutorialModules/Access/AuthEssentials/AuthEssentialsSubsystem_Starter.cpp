@@ -48,8 +48,49 @@ void UAuthEssentialsSubsystem_Starter::ClearAuthCredentials()
     Credentials.Token = TEXT("");
 }
 
+void UAuthEssentialsSubsystem_Starter::OnLoginComplete(int32 LocalUserNum, bool bLoginWasSuccessful,
+    const FUniqueNetId& UserId, const FString& LoginError, const FAuthOnLoginCompleteDelegate_Starter OnLoginComplete)
+{
+    if (bLoginWasSuccessful)
+    {
+        UE_LOG_AUTH_ESSENTIALS(Log, TEXT("Login user successful."));
+    }
+    else
+    {
+        UE_LOG_AUTH_ESSENTIALS(Warning, TEXT("Login user failed. Message: %s"), *LoginError);
+    }
+
+    IdentityInterface->ClearOnLoginCompleteDelegates(LocalUserNum, this);
+    OnLoginComplete.ExecuteIfBound(bLoginWasSuccessful, LoginError);
+}
+
 void UAuthEssentialsSubsystem_Starter::Login(const APlayerController* PC, const FAuthOnLoginCompleteDelegate_Starter& OnLoginComplete)
 {
-    // TODO: Implement login functionality here.
-    UE_LOG_AUTH_ESSENTIALS(Warning, TEXT("Login functionality is not yet implemented."))
+    if (!ensure(IdentityInterface.IsValid()))
+    {
+        FString Message = TEXT("Cannot login. Identiy interface is not valid.");
+        UE_LOG_AUTH_ESSENTIALS(Warning, TEXT("%s"), *Message);
+        OnLoginComplete.ExecuteIfBound(false, *Message);
+        return;
+    }
+
+    // Get local user number
+    const ULocalPlayer* LocalPlayer = PC->GetLocalPlayer();
+    ensure(LocalPlayer != nullptr);
+    int32 LocalUserNum = LocalPlayer->GetControllerId();
+    
+    // Perform login using IdentityInterface
+    IdentityInterface->AddOnLoginCompleteDelegate_Handle(LocalUserNum, FOnLoginCompleteDelegate::CreateUObject(this, &ThisClass::OnLoginComplete, OnLoginComplete));
+    IdentityInterface->Login(LocalUserNum, Credentials);
+
+    // Helper to logout the user when the game shutdown in play in editor mode.
+    if (UAccelByteWarsGameInstance* ByteWarsGameInstance = Cast<UAccelByteWarsGameInstance>(GetGameInstance()); ensure(ByteWarsGameInstance))
+    {
+        ByteWarsGameInstance->OnGameInstanceShutdownDelegate.AddWeakLambda(this, [this, LocalUserNum]()
+        {
+            IdentityInterface->Logout(LocalUserNum);
+
+            UE_LOG_AUTH_ESSENTIALS(Warning, TEXT("Logging out local player %d"), LocalUserNum);
+        });
+    }
 }
