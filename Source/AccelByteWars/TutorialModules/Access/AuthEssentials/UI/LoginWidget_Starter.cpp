@@ -76,7 +76,8 @@ void ULoginWidget_Starter::SetLoginState(const ELoginState NewState)
 
 void ULoginWidget_Starter::OnLoginWithDeviceIdButtonClicked()
 {
-	// TODO (TutorialModule): call login with device id.
+	SetLoginState(ELoginState::LoggingIn);
+	OnRetryLoginDelegate.AddUObject(this, &ThisClass::OnLoginWithDeviceIdButtonClicked);
 	
 	UE_LOG_AUTH_ESSENTIALS(Warning, TEXT("Please integrate AcceByte Online Subsystem to access AccelByte Game Services."));
 }
